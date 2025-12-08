@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+		<ProjectReference Include="..\Store.Data\Store.Data.csproj" />
+		<ProjectReference Include="..\Store.Data.Model\Store.Data.Model.csproj" />
+		<ProjectReference Include="..\Store.Biz.Model\Store.Biz.Model.csproj" />
+	</ItemGroup>
+
+</Project>
