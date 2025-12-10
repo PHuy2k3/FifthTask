@@ -20,3 +20,4 @@ D:\CMC_Task\fifth-task\be\Store.Data.Model\obj\Debug\net10.0\Store.Data.Model.dl
 D:\CMC_Task\fifth-task\be\Store.Data.Model\obj\Debug\net10.0\refint\Store.Data.Model.dll
 D:\CMC_Task\fifth-task\be\Store.Data.Model\obj\Debug\net10.0\Store.Data.Model.pdb
 D:\CMC_Task\fifth-task\be\Store.Data.Model\obj\Debug\net10.0\ref\Store.Data.Model.dll
+D:\CMC_Task\fifth-task\be\Store.Data.Model\obj\Debug\net10.0\Store.Data.Model.sourcelink.json

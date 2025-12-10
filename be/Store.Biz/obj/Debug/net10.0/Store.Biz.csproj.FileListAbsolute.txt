@@ -128,3 +128,4 @@ D:\CMC_Task\fifth-task\be\Store.Biz\obj\Debug\net10.0\Store.Biz.dll
 D:\CMC_Task\fifth-task\be\Store.Biz\obj\Debug\net10.0\refint\Store.Biz.dll
 D:\CMC_Task\fifth-task\be\Store.Biz\obj\Debug\net10.0\Store.Biz.pdb
 D:\CMC_Task\fifth-task\be\Store.Biz\obj\Debug\net10.0\ref\Store.Biz.dll
+D:\CMC_Task\fifth-task\be\Store.Biz\obj\Debug\net10.0\Store.Biz.sourcelink.json

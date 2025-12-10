@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Store.Biz.Model;
 using Store.Data;
 using Store.Data.Model;
 
@@ -92,16 +93,5 @@ namespace Store.Api.Controllers
             }
             return NoContent();
         }
-    }
-
-    public class ReplaceCartDto
-    {
-        public ReplaceCartItemDto[] Items { get; set; } = new ReplaceCartItemDto[0];
-    }
-    public class ReplaceCartItemDto
-    {
-        public int ProductId { get; set; }
-        public int Quantity { get; set; }
-        public decimal UnitPrice { get; set; }
     }
 }

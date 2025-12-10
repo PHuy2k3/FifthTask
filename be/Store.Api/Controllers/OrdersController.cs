@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Store.Biz.Interfaces;
 using Store.Data;
 using Store.Data.Model;
 using Store.Api.Models;
@@ -18,11 +19,13 @@ namespace Store.Api.Controllers
     {
         private readonly StoreDbContext _db;
         private readonly ILogger<OrdersController> _logger;
+        private readonly IOrderService _orderService;
 
-        public OrdersController(StoreDbContext db, ILogger<OrdersController> logger)
+        public OrdersController(StoreDbContext db, ILogger<OrdersController> logger, IOrderService orderService)
         {
             _db = db;
             _logger = logger;
+            _orderService = orderService;
         }
 
         // ---------------------------
@@ -39,10 +42,10 @@ namespace Store.Api.Controllers
         // POST /api/orders/pay (Anonymous checkout)
         // ---------------------------
         [HttpPost("pay")]
-        [AllowAnonymous]
+        [Authorize]
         public async Task<IActionResult> Pay([FromBody] CreateOrderDto dto)
         {
-            return await CreateOrderInternal(dto, requireAuth: false);
+            return await CreateOrderInternal(dto, requireAuth: true);
         }
 
         // ---------------------------
@@ -54,8 +57,7 @@ namespace Store.Api.Controllers
                 return BadRequest(new { error = "No items in order" });
 
             if (requireAuth && !User.Identity.IsAuthenticated)
-                return Unauthorized();
-
+                return Unauthorized(new { error = "Bạn cần đăng nhập để thanh toán" });
             int? userId = null;
             var sub = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
             if (int.TryParse(sub, out var parsed)) userId = parsed;
@@ -150,7 +152,19 @@ namespace Store.Api.Controllers
                     o.CustomerName,
                     o.CustomerEmail,
                     o.CustomerPhone,
-                    o.ShippingAddress
+                    o.ShippingAddress,
+                    Items = _db.OrderItems
+                        .Where(i => i.OrderId == o.OrderId)
+                        .Join(_db.Products, i => i.ProductId, p => p.Id, (i, p) => new {
+                            i.OrderItemId,
+                            i.ProductId,
+                            ProductName = p.Name,
+                            ProductPrice = p.Price,
+                            i.Quantity,
+                            i.UnitPrice,
+                            LineTotal = i.UnitPrice * i.Quantity
+                        })
+                        .ToList()
                 }).ToListAsync();
 
             return Ok(new { total, page, pageSize, items });
@@ -198,7 +212,7 @@ namespace Store.Api.Controllers
         [Authorize]
         public async Task<IActionResult> GetById(long id)
         {
-            var order = await _db.Orders.Include(o => o.Items).AsNoTracking()
+            var order = await _db.Orders.AsNoTracking()
                 .FirstOrDefaultAsync(o => o.OrderId == id);
 
             if (order == null) return NotFound();
@@ -208,6 +222,21 @@ namespace Store.Api.Controllers
             var isOwner = int.TryParse(sub, out var uid) && order.CustomerId == uid;
 
             if (!callerIsAdmin && !isOwner) return Forbid();
+
+            var items = await (from i in _db.OrderItems
+                               join p in _db.Products on i.ProductId equals p.Id into gj
+                               from p in gj.DefaultIfEmpty()
+                               where i.OrderId == id
+                               select new
+                               {
+                                   i.OrderItemId,
+                                   i.ProductId,
+                                   ProductName = p != null ? p.Name : string.Empty,
+                                   ProductPrice = p != null ? p.Price : (decimal?)null,
+                                   i.Quantity,
+                                   i.UnitPrice,
+                                   LineTotal = i.UnitPrice * i.Quantity
+                               }).ToListAsync();
 
             return Ok(new
             {
@@ -220,12 +249,7 @@ namespace Store.Api.Controllers
                 order.CustomerName,
                 order.CustomerEmail,
                 order.CustomerPhone,
-                items = order.Items.Select(i => new {
-                    i.OrderItemId,
-                    i.ProductId,
-                    i.Quantity,
-                    i.UnitPrice
-                })
+                items
             });
         }
 
@@ -236,11 +260,12 @@ namespace Store.Api.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Approve(long id)
         {
-            var order = await _db.Orders.FindAsync(id);
-            if (order == null) return NotFound();
+            var changer = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "admin";
+            var result = await _orderService.UpdateOrderStatusAsync(id, "Approved", changer);
 
-            order.Status = "Approved";
-            await _db.SaveChangesAsync();
+            if (!result.IsSuccess)
+                return NotFound(new { error = result.Error });
+
 
             var notif = await _db.AdminNotifications
                 .FirstOrDefaultAsync(n => n.OrderId == id && !n.IsRead);
@@ -266,19 +291,20 @@ namespace Store.Api.Controllers
             if (!allowed.Contains(dto.Status))
                 return BadRequest(new { error = "Invalid status" });
 
-            var order = await _db.Orders.FindAsync(id);
-            if (order == null) return NotFound();
+            var changer = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "admin";
+            var result = await _orderService.UpdateOrderStatusAsync(id, dto.Status, changer);
 
-            order.Status = dto.Status;
-            if (dto.Status == "Shipped" || dto.Status == "Done") order.ShippedAt = DateTime.UtcNow;
-
-            await _db.SaveChangesAsync();
+            if (!result.IsSuccess)
+            {
+                if (result.Error == "Order not found") return NotFound();
+                return BadRequest(new { error = result.Error });
+            }
 
             // (optional) create admin notification or audit log
             _db.AdminNotifications.Add(new AdminNotification
             {
-                OrderId = order.OrderId,
-                Message = $"Order #{order.OrderId} status changed to {dto.Status}",
+                OrderId = id,
+                Message = $"Order #{id} status changed to {dto.Status}",
                 CreatedAt = DateTime.UtcNow,
                 IsRead = false
             });

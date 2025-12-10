@@ -33,13 +33,22 @@ namespace Store.Biz.Services
             using var tx = await _db.Database.BeginTransactionAsync();
             try
             {
-                var order = await _db.Orders.FirstOrDefaultAsync(o => o.OrderId == orderId);
+                var order = await _db.Orders.AsNoTracking().FirstOrDefaultAsync(o => o.OrderId == orderId);
                 if (order == null) return Result.Fail("Order not found");
 
                 var old = order.Status;
-                order.Status = newStatus;
+                var setShippedTime = newStatus == "Shipped" || newStatus == "Done";
+                var shippedAt = setShippedTime ? DateTime.UtcNow : order.ShippedAt;
 
-                await _db.SaveChangesAsync();
+                var affected = setShippedTime
+                    ? await _db.Database.ExecuteSqlInterpolatedAsync($"UPDATE sales.Orders SET Status={newStatus}, ShippedAt={shippedAt} WHERE OrderId={orderId}")
+                    : await _db.Database.ExecuteSqlInterpolatedAsync($"UPDATE sales.Orders SET Status={newStatus} WHERE OrderId={orderId}");
+
+                if (affected == 0)
+                {
+                    await tx.RollbackAsync();
+                    return Result.Fail("Order update failed");
+                }
 
                 var notif = new UserNotification
                 {
@@ -85,6 +94,7 @@ namespace Store.Biz.Services
             catch (Exception ex)
             {
                 try { await tx.RollbackAsync(); } catch { }
+                _logger.LogError(ex, "Failed to update order status for {OrderId}", orderId);
                 return Result.Fail("Internal error");
             }
         }

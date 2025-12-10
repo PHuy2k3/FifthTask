@@ -124,3 +124,4 @@ D:\CMC_Task\fifth-task\be\Store.Data\obj\Debug\net10.0\refint\Store.Data.dll
 D:\CMC_Task\fifth-task\be\Store.Data\obj\Debug\net10.0\Store.Data.pdb
 D:\CMC_Task\fifth-task\be\Store.Data\obj\Debug\net10.0\Store.Data.genruntimeconfig.cache
 D:\CMC_Task\fifth-task\be\Store.Data\obj\Debug\net10.0\ref\Store.Data.dll
+D:\CMC_Task\fifth-task\be\Store.Data\obj\Debug\net10.0\Store.Data.sourcelink.json
